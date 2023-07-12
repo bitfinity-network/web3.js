@@ -109,7 +109,11 @@ export class Web3 extends Web3Context<EthExecutionAPI> {
 		const eth = new Proxy<Web3Eth>(self.use(Web3Eth), {
 			get(target: Web3Eth, prop: string) {
 				const originalMethod = target[prop as keyof Web3Eth];
-				if (isQueryMethod(prop) && typeof originalMethod === 'function') {
+				if (
+					isQueryMethod(prop) &&
+					typeof originalMethod === 'function' &&
+					prop !== 'getBlockNumber'
+				) {
 					return async (...args: unknown[]): Promise<unknown> => {
 						let funcArgs: unknown[] = args;
 						if (!args.length) {
