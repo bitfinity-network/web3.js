@@ -38,13 +38,7 @@ import { Web3EthInterface } from './types.js';
 import { Web3PkgInfo } from './version.js';
 
 function isQueryMethod(methodName: string): boolean {
-	// Add the method names of query methods that you want to replicate
-	const queryMethods = [
-		'getBlockNumber',
-		'getBlock',
-		'getTransaction' /* add more methods as needed */,
-	];
-	return queryMethods.includes(methodName);
+	return methodName.includes('get');
 }
 
 export class Web3 extends Web3Context<EthExecutionAPI> {
