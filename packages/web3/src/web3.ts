@@ -117,9 +117,12 @@ export class Web3 extends Web3Context<EthExecutionAPI> {
 			}
 		}
 
+		// Intercept all .eth queries
 		const eth = new Proxy<Web3Eth>(self.use(Web3Eth), {
 			get(target: Web3Eth, prop: string) {
+				// get actual method or property being called
 				const originalMethod = target[prop as keyof Web3Eth];
+				// check if it's a function, a query method and not getBlockNumber
 				if (
 					isQueryMethod(prop) &&
 					typeof originalMethod === 'function' &&
@@ -128,9 +131,11 @@ export class Web3 extends Web3Context<EthExecutionAPI> {
 					return async (...args: unknown[]): Promise<unknown> => {
 						let funcArgs: unknown[] = args;
 						if (!args.length) {
+							// get latest block number and add to arguments
 							const latestBlockNumber: bigint = await target.getBlockNumber();
 							funcArgs = [latestBlockNumber];
 						}
+						// call query 4times
 						const replicatedQueries = Array.from(
 							{ length: 4 },
 							async () =>
@@ -141,10 +146,12 @@ export class Web3 extends Web3Context<EthExecutionAPI> {
 						);
 						const promises = await Promise.all(replicatedQueries);
 
+						// check if all the results of the queries are the same
 						const areAllEqual: boolean = promises.every(
 							(val, _, arr) => stringifyData(val) === stringifyData(arr[0]),
 						);
 						if (areAllEqual) return promises[0];
+						// throw error if the queries are not the same
 						throw new Error('query nodes do not match');
 					};
 				}
