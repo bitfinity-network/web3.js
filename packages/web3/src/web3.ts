@@ -145,7 +145,7 @@ export class Web3 extends Web3Context<EthExecutionAPI> {
 							(val, _, arr) => stringifyData(val) === stringifyData(arr[0]),
 						);
 						if (areAllEqual) return promises[0];
-						return undefined;
+						throw new Error('query nodes do not match');
 					};
 				}
 
