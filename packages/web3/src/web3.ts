@@ -37,8 +37,19 @@ import { initAccountsForContext } from './accounts.js';
 import { Web3EthInterface } from './types.js';
 import { Web3PkgInfo } from './version.js';
 
+type QueryFunction<T extends unknown[], R> = (...args: T) => R;
+
 function isQueryMethod(methodName: string): boolean {
 	return methodName.includes('get');
+}
+
+function stringifyData<T>(data: T): string {
+	return JSON.stringify(data, (_, value) => {
+		if (typeof value === 'bigint') {
+			return value.toString(); // Convert BigInt to string
+		}
+		return value as unknown; // Return other values unchanged
+	});
 }
 
 export class Web3 extends Web3Context<EthExecutionAPI> {
@@ -122,11 +133,16 @@ export class Web3 extends Web3Context<EthExecutionAPI> {
 						}
 						const replicatedQueries = Array.from(
 							{ length: 4 },
-							async () => originalMethod.apply(target, funcArgs) as Promise<unknown>,
+							async () =>
+								(originalMethod as QueryFunction<unknown[], unknown>).apply(
+									target,
+									funcArgs,
+								) as Promise<unknown>,
 						);
 						const promises = await Promise.all(replicatedQueries);
+
 						const areAllEqual: boolean = promises.every(
-							(val, i, arr) => JSON.stringify(val) === JSON.stringify(arr[0]),
+							(val, _, arr) => stringifyData(val) === stringifyData(arr[0]),
 						);
 						if (areAllEqual) return promises[0];
 						return undefined;
