@@ -37,6 +37,7 @@ import { initAccountsForContext } from './accounts.js';
 import { Web3EthInterface } from './types.js';
 import { Web3PkgInfo } from './version.js';
 
+const REPLICATED_QUERY_LENGTH = 4;
 type QueryFunction<T extends unknown[], R> = (...args: T) => R;
 
 function isQueryMethod(methodName: string): boolean {
@@ -137,7 +138,7 @@ export class Web3 extends Web3Context<EthExecutionAPI> {
 						}
 						// call query 4times
 						const replicatedQueries = Array.from(
-							{ length: 4 },
+							{ length: REPLICATED_QUERY_LENGTH },
 							async () =>
 								(originalMethod as QueryFunction<unknown[], unknown>).apply(
 									target,
