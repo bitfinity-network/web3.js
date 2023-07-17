@@ -37,6 +37,22 @@ import { initAccountsForContext } from './accounts.js';
 import { Web3EthInterface } from './types.js';
 import { Web3PkgInfo } from './version.js';
 
+const REPLICATED_QUERY_LENGTH = 4;
+type QueryFunction<T extends unknown[], R> = (...args: T) => R;
+
+function isQueryMethod(methodName: string): boolean {
+	return methodName.includes('get');
+}
+
+function stringifyData<T>(data: T): string {
+	return JSON.stringify(data, (_, value) => {
+		if (typeof value === 'bigint') {
+			return value.toString(); // Convert BigInt to string
+		}
+		return value as unknown; // Return other values unchanged
+	});
+}
+
 export class Web3 extends Web3Context<EthExecutionAPI> {
 	public static version = Web3PkgInfo.version;
 	public static utils = utils;
@@ -102,7 +118,48 @@ export class Web3 extends Web3Context<EthExecutionAPI> {
 			}
 		}
 
-		const eth = self.use(Web3Eth);
+		// Intercept all .eth queries
+		const eth = new Proxy<Web3Eth>(self.use(Web3Eth), {
+			get(target: Web3Eth, prop: string) {
+				// get actual method or property being called
+				const originalMethod = target[prop as keyof Web3Eth];
+				// check if it's a function, a query method and not getBlockNumber
+				if (
+					isQueryMethod(prop) &&
+					typeof originalMethod === 'function' &&
+					prop !== 'getBlockNumber'
+				) {
+					return async (...args: unknown[]): Promise<unknown> => {
+						let funcArgs: unknown[] = args;
+						if (!args.length) {
+							// get latest block number and add to arguments
+							const latestBlockNumber: bigint = await target.getBlockNumber();
+							funcArgs = [latestBlockNumber];
+						}
+						// call query 4times
+						const replicatedQueries = Array.from(
+							{ length: REPLICATED_QUERY_LENGTH },
+							async () =>
+								(originalMethod as QueryFunction<unknown[], unknown>).apply(
+									target,
+									funcArgs,
+								) as Promise<unknown>,
+						);
+						const promises = await Promise.all(replicatedQueries);
+
+						// check if all the results of the queries are the same
+						const areAllEqual: boolean = promises.every(
+							(val, _, arr) => stringifyData(val) === stringifyData(arr[0]),
+						);
+						if (areAllEqual) return promises[0];
+						// throw error if the queries are not the same
+						throw new Error('query nodes do not match');
+					};
+				}
+
+				return originalMethod;
+			},
+		});
 
 		// Eth Module
 		this.eth = Object.assign(eth, {
