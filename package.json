@@ -1,5 +1,5 @@
 {
-	"name": "web3.js",
+	"name": "@infinityswapofficial/web3.js",
 	"private": true,
 	"description": "Ethereum API wrappers and utilities",
 	"author": "ChainSafe Systems",
@@ -92,6 +92,7 @@
 		"prepare": "husky install",
 		"postinstall": "yarn build",
 		"compile:contracts": "node ./scripts/compile_contracts.js && yarn format && yarn lint:fix",
+		"publish": "lerna publish --no-private",
 		"publish:canary": "lerna publish --canary --dist-tag dev --preid dev.$(git rev-parse --short HEAD) --exact --graph-type all --force-publish \"*\" --no-verify-access --yes"
 	},
 	"devDependencies": {
